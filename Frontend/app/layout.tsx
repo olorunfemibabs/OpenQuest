@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { Footer } from "@/components/layout/footer";
+import { Navbar } from "@/components/layout/navbar";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -12,7 +13,7 @@ const fontSans = FontSans({
 });
 
 export const metadata: Metadata = {
-  title: "QuizCraft | Interactive Learning Platform",
+  title: "OpenQuest | Interactive Learning Platform",
   description:
     "A comprehensive platform for managing hackathons, quizzes, and technical assessments with reward distribution.",
   keywords: [
@@ -44,7 +45,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <div className="relative flex min-h-screen flex-col bg-background text-foreground">
-            {children}
+            <Navbar />
+            <main className="flex-1 pt-14">{children}</main>
             <Footer />
           </div>
           <Toaster />

@@ -4,7 +4,6 @@
 
 @layer base {
   :root {
-    /* Using proper HSL format without spaces */
     --background: 0, 0%, 3.9%;
     --foreground: 0, 0%, 98%;
 
@@ -36,7 +35,6 @@
   }
 
   .dark {
-    /* Same as root since we're using dark theme by default */
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -105,9 +103,20 @@
       background-position: 0% 50%;
     }
   }
+
+  .hover-card-animation {
+    @apply transition-all duration-200 hover:shadow-md hover:border-primary/50;
+  }
+
+  .hover-card-content {
+    @apply group-hover:border-primary/50 transition-colors;
+  }
+
+  .hover-card-title {
+    @apply group-hover:text-primary transition-colors;
+  }
 }
 
-/* Add these base styles */
 @layer base {
   .gradient-text {
     @apply bg-gradient-to-r from-primary via-secondary to-accent bg-clip-text text-transparent;

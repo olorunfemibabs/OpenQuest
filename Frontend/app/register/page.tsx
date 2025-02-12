@@ -15,8 +15,51 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { Github } from "lucide-react";
 import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
+import { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
+import { PasswordInput } from "@/components/ui/password-input";
 
 export default function RegisterPage() {
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+
+  const form = useForm<RegisterInput>({
+    resolver: zodResolver(registerSchema),
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      terms: false,
+    },
+  });
+
+  const onSubmit = async (data: RegisterInput) => {
+    try {
+      setIsLoading(true);
+      // Yet to integrate with backend API
+      console.log(data);
+
+      // Simulating API call
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      toast({
+        title: "Success",
+        description: "Your account has been created.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
       <div className="lg:p-8">
@@ -30,73 +73,132 @@ export default function RegisterPage() {
                 Enter your information to get started
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid gap-4">
-              <div className="grid gap-2">
-                <Button variant="outline" className="gap-2">
-                  <Github className="h-4 w-4" />
-                  Sign up with GitHub
-                </Button>
-              </div>
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t" />
+            <form onSubmit={form.handleSubmit(onSubmit)}>
+              <CardContent className="grid gap-4">
+                <div className="grid gap-2">
+                  <Button variant="outline" className="gap-2">
+                    <Github className="h-4 w-4" />
+                    Sign up with GitHub
+                  </Button>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-background px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <span className="w-full border-t" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with
+                    </span>
+                  </div>
                 </div>
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="John Doe"
-                  className="border-border/50"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  className="border-border/50"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="password">Password</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  className="border-border/50"
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="terms" />
-                <label
-                  htmlFor="terms"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    placeholder="John Doe"
+                    className="border-border/50"
+                    disabled={isLoading}
+                    {...form.register("name")}
+                  />
+                  {form.formState.errors.name && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.name.message}
+                    </p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    className="border-border/50"
+                    disabled={isLoading}
+                    {...form.register("email")}
+                  />
+                  {form.formState.errors.email && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.email.message}
+                    </p>
+                  )}
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password</Label>
+                  <PasswordInput
+                    id="password"
+                    className="border-border/50"
+                    disabled={isLoading}
+                    showStrengthIndicator
+                    value={form.watch("password")}
+                    {...form.register("password")}
+                  />
+                  {form.formState.errors.password && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.password.message}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="terms"
+                    disabled={isLoading}
+                    checked={form.watch("terms")}
+                    onCheckedChange={(checked) => {
+                      form.setValue("terms", checked === true);
+                    }}
+                  />
+                  <label
+                    htmlFor="terms"
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                  >
+                    I agree to the{" "}
+                    <Link
+                      href="/terms"
+                      className="text-primary hover:underline"
+                    >
+                      terms and conditions
+                    </Link>
+                  </label>
+                </div>
+                {form.formState.errors.terms && (
+                  <p className="text-sm text-destructive">
+                    {form.formState.errors.terms.message}
+                  </p>
+                )}
+              </CardContent>
+              <CardFooter className="flex flex-col gap-4">
+                <Button
+                  type="submit"
+                  className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+                  disabled={isLoading}
                 >
-                  I agree to the{" "}
-                  <Link href="/terms" className="text-primary hover:underline">
-                    terms and conditions
+                  {isLoading ? (
+                    <>
+                      <span className="mr-2">Creating account</span>
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          duration: 1,
+                          repeat: Infinity,
+                          ease: "linear",
+                        }}
+                      >
+                        ⚪
+                      </motion.span>
+                    </>
+                  ) : (
+                    "Create Account"
+                  )}
+                </Button>
+                <div className="text-sm text-center text-muted-foreground">
+                  Already have an account?{" "}
+                  <Link href="/login" className="text-primary hover:underline">
+                    Sign in
                   </Link>
-                </label>
-              </div>
-            </CardContent>
-            <CardFooter className="flex flex-col gap-4">
-              <Button className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90">
-                Create Account
-              </Button>
-              <div className="text-sm text-center text-muted-foreground">
-                Already have an account?{" "}
-                <Link href="/login" className="text-primary hover:underline">
-                  Sign in
-                </Link>
-              </div>
-            </CardFooter>
+                </div>
+              </CardFooter>
+            </form>
           </Card>
         </div>
       </div>
