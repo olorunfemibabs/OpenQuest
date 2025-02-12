@@ -1,4 +1,4 @@
-# QuizCraft - Interactive Learning Platform
+# OpenQuest - Interactive Learning Platform
 
 A comprehensive platform for managing hackathons, quizzes, and technical assessments with reward distribution.
 
