@@ -22,10 +22,40 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
+import { Badge } from "@/components/ui/badge";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { protocolService } from "@/services/protocol-service";
+import { useRouter } from "next/navigation";
+
+const recommendedTags = [
+  "Web3",
+  "DeFi",
+  "Layer 1",
+  "Layer 2",
+  "Rollups",
+  "Gaming",
+  "NFT",
+  "DAO",
+  "Privacy",
+  "Infrastructure",
+  "Smart Contracts",
+  "Scaling",
+];
 
 const protocolFormSchema = z.object({
   name: z.string().min(2, "Protocol name must be at least 2 characters"),
@@ -36,6 +66,8 @@ const protocolFormSchema = z.object({
   github: z.string().optional(),
   discord: z.string().optional(),
   logo: z.any().optional(),
+  tags: z.array(z.string()).min(1, "Add at least one tag"),
+  staffMembers: z.array(z.string()).optional(),
 });
 
 type ProtocolFormValues = z.infer<typeof protocolFormSchema>;
@@ -43,6 +75,10 @@ type ProtocolFormValues = z.infer<typeof protocolFormSchema>;
 export default function NewProtocolPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [customTag, setCustomTag] = useState("");
+  const [openTagSelect, setOpenTagSelect] = useState(false);
+  const router = useRouter();
 
   const form = useForm<ProtocolFormValues>({
     resolver: zodResolver(protocolFormSchema),
@@ -54,26 +90,62 @@ export default function NewProtocolPage() {
       twitter: "",
       github: "",
       discord: "",
+      tags: [],
     },
   });
+
+  const addTag = (tag: string) => {
+    if (!selectedTags.includes(tag)) {
+      const newTags = [...selectedTags, tag];
+      setSelectedTags(newTags);
+      form.setValue("tags", newTags);
+    }
+    setOpenTagSelect(false);
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    const updatedTags = selectedTags.filter((tag) => tag !== tagToRemove);
+    setSelectedTags(updatedTags);
+    form.setValue("tags", updatedTags);
+  };
+
+  const handleCustomTagSubmit = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && customTag.trim()) {
+      e.preventDefault();
+      addTag(customTag.trim());
+      setCustomTag("");
+    }
+  };
 
   async function onSubmit(data: ProtocolFormValues) {
     setIsLoading(true);
     try {
-      // Yet to implement protocol creation logic
-      console.log(data);
+      await protocolService.register({ name: data.name });
+
+      if (data.staffMembers?.length) {
+        for (const staffUuid of data.staffMembers) {
+          await protocolService.addStaff({
+            protocol_name: data.name,
+            staff_uuid: staffUuid,
+          });
+        }
+      }
+
       toast({
-        title: "Protocol Created",
-        description: "Your protocol has been successfully registered.",
+        title: "Success",
+        description: "Protocol created successfully",
       });
-    } catch (error) {
+      router.push("/admin/protocols");
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description:
+          error.response?.data?.message || "Failed to create protocol",
         variant: "destructive",
       });
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
   }
 
   return (
@@ -255,6 +327,93 @@ export default function NewProtocolPage() {
                         <FormDescription>
                           Recommended size: 256x256px. Max file size: 2MB
                         </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="tags"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tags</FormLabel>
+                        <FormDescription>
+                          Select multiple tags that best describe your protocol
+                        </FormDescription>
+                        <div className="space-y-4">
+                          <div className="flex flex-wrap gap-2">
+                            {selectedTags.map((tag) => (
+                              <Badge
+                                key={tag}
+                                variant="secondary"
+                                className="flex items-center gap-1"
+                              >
+                                {tag}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-4 w-4 p-0 hover:bg-transparent"
+                                  onClick={() => removeTag(tag)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </Badge>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <Popover
+                              open={openTagSelect}
+                              onOpenChange={setOpenTagSelect}
+                            >
+                              <PopoverTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-8"
+                                >
+                                  Add Tags
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent
+                                className="w-[200px] p-0"
+                                align="start"
+                              >
+                                <Command>
+                                  <CommandInput placeholder="Search tags..." />
+                                  <CommandEmpty>No tags found.</CommandEmpty>
+                                  <CommandGroup>
+                                    {recommendedTags
+                                      .filter(
+                                        (tag) => !selectedTags.includes(tag)
+                                      )
+                                      .map((tag) => (
+                                        <CommandItem
+                                          key={tag}
+                                          value={tag}
+                                          onSelect={(currentValue) => {
+                                            addTag(currentValue);
+                                          }}
+                                          className="cursor-pointer"
+                                        >
+                                          {tag}
+                                        </CommandItem>
+                                      ))}
+                                  </CommandGroup>
+                                </Command>
+                              </PopoverContent>
+                            </Popover>
+                            <div className="flex-1">
+                              <Input
+                                placeholder="Or type a custom tag and press Enter"
+                                value={customTag}
+                                onChange={(e) => setCustomTag(e.target.value)}
+                                onKeyDown={handleCustomTagSubmit}
+                                className="h-8"
+                              />
+                            </div>
+                          </div>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}

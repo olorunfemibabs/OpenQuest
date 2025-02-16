@@ -1,5 +1,11 @@
 "use client";
 
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -9,24 +15,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import Link from "next/link";
-import { Github } from "lucide-react";
+import { useAuth } from "@/contexts/auth-context";
+import { Loader2, Github } from "lucide-react";
 import { motion } from "framer-motion";
-import Image from "next/image";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { loginSchema, type LoginInput } from "@/lib/validations/auth";
-import { useState } from "react";
-import { useToast } from "@/components/ui/use-toast";
 import { PasswordInput } from "@/components/ui/password-input";
+import { loginSchema } from "@/lib/validations/auth";
+
+type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const { login } = useAuth();
+  const router = useRouter();
 
-  const form = useForm<LoginInput>({
+  const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
@@ -34,38 +45,22 @@ export default function LoginPage() {
     },
   });
 
-  const onSubmit = async (data: LoginInput) => {
+  async function onSubmit(data: LoginValues) {
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      // Yet to integrate with backend API
-      console.log(data);
-
-      // Simulating API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      toast({
-        title: "Success",
-        description: "You have successfully logged in.",
-      });
+      await login(data.email, data.password);
+      router.push("/");
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Something went wrong. Please try again.",
-      });
+      // Error is handled by auth context
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="container relative min-h-screen flex-col items-center justify-center grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+    <div className="container relative h-screen flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
       <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex dark:border-r">
-        <div className="absolute inset-0 bg-gradient-to-b from-primary to-secondary opacity-20" />
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute h-[400px] w-[400px] rounded-full bg-primary/20 -top-20 -left-20 blur-3xl" />
-          <div className="absolute h-[300px] w-[300px] rounded-full bg-secondary/20 -bottom-20 -right-20 blur-3xl" />
-        </div>
+        <div className="absolute inset-0 bg-gradient-to-t from-secondary to-primary opacity-20" />
         <div className="relative z-20 flex items-center text-lg font-medium">
           <Link href="/">OpenQuest</Link>
         </div>
@@ -75,129 +70,97 @@ export default function LoginPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <blockquote className="space-y-6">
+          <blockquote className="space-y-2">
             <p className="text-lg">
-              &ldquo;OpenQuest has transformed how I approach learning and
-              development. The challenges keep me engaged and the rewards make
-              it even more exciting.&rdquo;
+              &ldquo;Join our community of developers and start your journey
+              towards mastery through interactive challenges and rewards.&rdquo;
             </p>
-            <footer className="flex items-center gap-4">
-              <Image
-                src="/avatars/sofia-davis.png"
-                alt="Sofia Davis"
-                width={40}
-                height={40}
-                className="rounded-full object-cover"
-              />
-              <div>
-                <div className="text-base font-medium">Sofia Davis</div>
-                <div className="text-sm text-white/60">
-                  Full Stack Developer
-                </div>
-              </div>
-            </footer>
+            <footer className="text-sm">The OpenQuest Team</footer>
           </blockquote>
         </motion.div>
       </div>
       <div className="lg:p-8">
-        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-          <Card className="border-none shadow-2xl">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl text-center">
-                Welcome back
-              </CardTitle>
-              <CardDescription className="text-center">
-                Enter your email and password to sign in
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px] pt-20 md:pt-0">
+          <div className="flex flex-col space-y-2 text-center">
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Welcome back
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Enter your credentials to sign in
+            </p>
+          </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Login to your account</CardTitle>
+              <CardDescription>
+                Choose your preferred login method
               </CardDescription>
             </CardHeader>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-              <CardContent className="grid gap-4">
-                <div className="grid gap-2">
-                  <Button
-                    variant="outline"
-                    className="gap-2"
-                    disabled={isLoading}
-                  >
-                    <Github className="h-4 w-4" />
-                    Continue with GitHub
-                  </Button>
+            <CardContent className="grid gap-4">
+              <Button variant="outline" disabled>
+                <Github className="mr-2 h-4 w-4" />
+                Github
+              </Button>
+
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
                 </div>
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-background px-2 text-muted-foreground">
-                      Or continue with
-                    </span>
-                  </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-background px-2 text-muted-foreground">
+                    Or continue with
+                  </span>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    className="border-border/50"
-                    disabled={isLoading}
-                    {...form.register("email")}
-                  />
-                  {form.formState.errors.email && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.email.message}
-                    </p>
-                  )}
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="password">Password</Label>
-                  <PasswordInput
-                    id="password"
-                    className="border-border/50"
-                    disabled={isLoading}
-                    {...form.register("password")}
-                  />
-                  {form.formState.errors.password && (
-                    <p className="text-sm text-destructive">
-                      {form.formState.errors.password.message}
-                    </p>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="flex flex-col gap-4">
-                <Button
-                  type="submit"
-                  className="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90"
-                  disabled={isLoading}
+              </div>
+
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(onSubmit)}
+                  className="space-y-4"
                 >
-                  {isLoading ? (
-                    <>
-                      <span className="mr-2">Signing in</span>
-                      <motion.span
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                      >
-                        ⚪
-                      </motion.span>
-                    </>
-                  ) : (
-                    "Sign In"
-                  )}
-                </Button>
-                <div className="text-sm text-center text-muted-foreground">
-                  Don&apos;t have an account?{" "}
-                  <Link
-                    href="/register"
-                    className="text-primary hover:underline"
-                  >
-                    Sign up
-                  </Link>
-                </div>
-              </CardFooter>
-            </form>
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input placeholder="you@example.com" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <PasswordInput {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button className="w-full" type="submit" disabled={isLoading}>
+                    {isLoading && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Sign In
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+              <div className="text-sm text-muted-foreground">
+                Don&apos;t have an account?{" "}
+                <Link href="/register" className="text-primary hover:underline">
+                  Sign up
+                </Link>
+              </div>
+            </CardFooter>
           </Card>
         </div>
       </div>

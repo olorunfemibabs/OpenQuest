@@ -11,72 +11,72 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { motion } from "framer-motion";
-import { Search, Users, Calendar, Trophy, ExternalLink } from "lucide-react";
+import {
+  Search,
+  Users,
+  Calendar,
+  Trophy,
+  ExternalLink,
+  Building2,
+} from "lucide-react";
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import { protocolService } from "@/services/protocol-service";
+import { useDebounce } from "@/lib/hooks/use-debounce";
+import { useProtocols } from "@/lib/hooks/use-protocols";
+import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/components/ui/use-toast";
+import { UIProtocol } from "@/services/protocol-service";
 
-interface Protocol {
-  id: string;
-  name: string;
-  description: string;
-  createdAt: string;
-  members: number;
-  totalQuizzes: number;
-  totalHackathons: number;
-  totalRewards: string;
-  website: string;
-  tags: string[];
-  status: "active" | "upcoming";
-  logo: string;
-}
+interface Protocol extends UIProtocol {}
 
-const protocols: Protocol[] = [
-  {
-    id: "1",
-    name: "Ethereum Foundation",
-    description:
-      "Supporting the Ethereum ecosystem through technical grants, community tools, and educational resources.",
-    createdAt: "2024-01-15",
-    members: 250,
-    totalQuizzes: 15,
-    totalHackathons: 3,
-    totalRewards: "50,000 USDC",
-    website: "https://ethereum.foundation",
-    tags: ["Smart Contracts", "DeFi", "Layer 1"],
-    status: "active",
-    logo: "/logos/ethereum-logo.png",
-  },
-  {
-    id: "2",
-    name: "Solana Labs",
-    description:
-      "Advancing blockchain scalability through high-performance protocols and developer tools.",
-    createdAt: "2024-02-01",
-    members: 180,
-    totalQuizzes: 8,
-    totalHackathons: 2,
-    totalRewards: "35,000 USDC",
-    website: "https://solana.com",
-    tags: ["High Performance", "Web3", "Layer 1"],
-    status: "active",
-    logo: "/logos/solanaLogo.png",
-  },
-  {
-    id: "3",
-    name: "Cartesi",
-    description:
-      "Enabling scalable and decentralized computation with Linux-based rollups for blockchain applications.",
-    createdAt: "2024-02-05",
-    members: 120,
-    totalQuizzes: 6,
-    totalHackathons: 3,
-    totalRewards: "25,000 USDC",
-    website: "https://cartesi.io",
-    tags: ["Rollups", "Web3", "Layer 2"],
-    status: "active",
-    logo: "/logos/cartesi-ctsi-logo.png",
-  },
-];
+// const protocols: Protocol[] = [
+//   {
+//     id: "1",
+//     name: "Ethereum Foundation",
+//     description:
+//       "Supporting the Ethereum ecosystem through technical grants, community tools, and educational resources.",
+//     createdAt: "2024-01-15",
+//     members: 250,
+//     totalQuizzes: 15,
+//     totalHackathons: 3,
+//     totalRewards: "50,000 USDC",
+//     website: "https://ethereum.foundation",
+//     tags: ["Smart Contracts", "DeFi", "Layer 1"],
+//     status: "active",
+//     logo: "/logos/ethereum-logo.png",
+//   },
+//   {
+//     id: "2",
+//     name: "Solana Labs",
+//     description:
+//       "Advancing blockchain scalability through high-performance protocols and developer tools.",
+//     createdAt: "2024-02-01",
+//     members: 180,
+//     totalQuizzes: 8,
+//     totalHackathons: 2,
+//     totalRewards: "35,000 USDC",
+//     website: "https://solana.com",
+//     tags: ["High Performance", "Web3", "Layer 1"],
+//     status: "active",
+//     logo: "/logos/solanaLogo.png",
+//   },
+//   {
+//     id: "3",
+//     name: "Cartesi",
+//     description:
+//       "Enabling scalable and decentralized computation with Linux-based rollups for blockchain applications.",
+//     createdAt: "2024-02-05",
+//     members: 120,
+//     totalQuizzes: 6,
+//     totalHackathons: 3,
+//     totalRewards: "25,000 USDC",
+//     website: "https://cartesi.io",
+//     tags: ["Rollups", "Web3", "Layer 2"],
+//     status: "active",
+//     logo: "/logos/cartesi-ctsi-logo.png",
+//   },
+// ];
 
 function ProtocolCard({ protocol }: { protocol: Protocol }) {
   return (
@@ -89,11 +89,7 @@ function ProtocolCard({ protocol }: { protocol: Protocol }) {
               <div className="flex-shrink-0">
                 <div className="h-12 w-12 overflow-hidden rounded-lg border bg-background group-hover:border-primary/50">
                   {protocol.logo ? (
-                    <img
-                      src={protocol.logo}
-                      alt={`${protocol.name} logo`}
-                      className="h-full w-full object-contain p-1"
-                    />
+                    <Building2 className="h-full w-full p-1 text-muted-foreground" />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center bg-muted">
                       <span className="text-xl font-bold text-muted-foreground">
@@ -177,24 +173,58 @@ function ProtocolCard({ protocol }: { protocol: Protocol }) {
 }
 
 export default function ProtocolsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedSearch = useDebounce(searchTerm, 500);
+  const { data: protocols, isLoading, error } = useProtocols();
+  const [searchResults, setSearchResults] = useState<Protocol[] | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
-  // Filter protocols based on search
-  const filteredProtocols = useMemo(() => {
-    return protocols.filter((protocol) => {
-      const searchContent = [
-        protocol.name,
-        protocol.description,
-        ...protocol.tags,
-      ]
-        .join(" ")
-        .toLowerCase();
-      return searchContent.includes(searchQuery.toLowerCase());
-    });
-  }, [searchQuery]);
+  console.log("Protocols from query:", protocols);
+  console.log("Search results:", searchResults);
+
+  // Ensure we're getting an array
+  const displayedProtocols = Array.isArray(searchResults || protocols)
+    ? searchResults || protocols
+    : [];
+
+  console.log("Final displayed protocols:", displayedProtocols);
+
+  useEffect(() => {
+    async function searchProtocols() {
+      if (!debouncedSearch) {
+        setSearchResults(null);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        const result = await protocolService.getProtocolByName(debouncedSearch);
+        setSearchResults(result ? [result] : []);
+      } catch (error) {
+        console.error("Search failed:", error);
+        toast({
+          title: "Search Failed",
+          description: "Failed to search protocols. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsSearching(false);
+      }
+    }
+
+    searchProtocols();
+  }, [debouncedSearch]);
+
+  if (error) {
+    return (
+      <div className="p-4 text-center">
+        <p className="text-destructive">Failed to load protocols</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="container py-10">
+    <div className="container py-6">
       <div className="space-y-8">
         {/* Header */}
         <div className="flex flex-col gap-4">
@@ -211,48 +241,57 @@ export default function ProtocolsPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search protocols by name, description, or tags..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
         </div>
 
         {/* Results Summary */}
-        {searchQuery && (
+        {searchTerm && (
           <p className="text-sm text-muted-foreground">
-            Found {filteredProtocols.length}{" "}
-            {filteredProtocols.length === 1 ? "protocol" : "protocols"}
+            Found {displayedProtocols?.length}
+            {displayedProtocols?.length === 1 ? "protocol" : "protocols"}
           </p>
         )}
 
-        {/* Protocol Cards */}
-        <div className="grid gap-6">
-          {filteredProtocols.map((protocol) => (
-            <motion.div
-              key={protocol.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <ProtocolCard protocol={protocol} />
-            </motion.div>
-          ))}
-
-          {filteredProtocols.length === 0 && (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-              <div className="rounded-full bg-primary/10 p-3">
-                <Trophy className="h-6 w-6 text-primary" />
+        {isLoading || isSearching ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((n) => (
+              <div key={n} className="space-y-3">
+                <Skeleton className="h-[125px] w-full" />
               </div>
-              <h3 className="mt-4 text-lg font-medium">No Protocols Found</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {searchQuery
-                  ? `No protocols found matching "${searchQuery}"`
-                  : "No protocols available at the moment."}
-              </p>
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {displayedProtocols?.map((protocol: Protocol) => (
+              <motion.div
+                key={protocol.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <ProtocolCard protocol={protocol} />
+              </motion.div>
+            ))}
+
+            {displayedProtocols?.length === 0 && (
+              <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+                <div className="rounded-full bg-primary/10 p-3">
+                  <Trophy className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="mt-4 text-lg font-medium">No Protocols Found</h3>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  {searchTerm
+                    ? `No protocols found matching "${searchTerm}"`
+                    : "No protocols available at the moment."}
+                </p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

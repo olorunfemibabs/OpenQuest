@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import { useState, useEffect } from "react";
+import { protocolService, UIProtocol } from "@/services/protocol-service";
+import { quizService } from "@/services/quiz-service";
 
 const techIcons = [
   { icon: "/icons/cartesi-ctsi-logo.svg", x: "20%", y: "20%" },
@@ -113,7 +116,31 @@ const stats = [
   },
 ];
 
-export default function Home() {
+export default function HomePage() {
+  const [protocols, setProtocols] = useState<UIProtocol[]>([]);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [protocolsData, quizzesData] = await Promise.all([
+          protocolService.getAll(),
+          quizService.getAll(),
+        ]);
+
+        setProtocols(protocolsData);
+        setQuizzes(quizzesData);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
+  }, []);
+
   return (
     <div className="relative flex min-h-screen flex-col overflow-hidden">
       <Navbar />
@@ -123,8 +150,8 @@ export default function Home() {
           <div className="container flex max-w-[64rem] flex-col items-center gap-4 text-center">
             <div className="space-y-4">
               <h1 className="font-heading text-4xl font-bold sm:text-5xl md:text-6xl lg:text-7xl">
-                <span className="text-primary">Achieve mastery</span> through
-                challenge
+                <span className="text-primary">Grow through</span> verified
+                participation
               </h1>
               <p className="mx-auto max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
                 Improve your development skills by participating in hackathons

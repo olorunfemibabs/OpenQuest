@@ -43,12 +43,14 @@ import * as z from "zod";
 
 interface StaffMember {
   id: string;
+  fullName: string;
   email: string;
   role: "admin" | "moderator" | "judge";
   dateAdded: string;
 }
 
 const staffFormSchema = z.object({
+  fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
   role: z.enum(["admin", "moderator", "judge"], {
     required_error: "Please select a role",
@@ -60,12 +62,14 @@ type StaffFormValues = z.infer<typeof staffFormSchema>;
 const mockStaff: StaffMember[] = [
   {
     id: "1",
+    fullName: "John Smith",
     email: "john@protocol.com",
     role: "admin",
     dateAdded: "2024-03-15",
   },
   {
     id: "2",
+    fullName: "Sarah Johnson",
     email: "sarah@protocol.com",
     role: "moderator",
     dateAdded: "2024-03-16",
@@ -80,6 +84,7 @@ export default function ProtocolStaffPage() {
   const form = useForm<StaffFormValues>({
     resolver: zodResolver(staffFormSchema),
     defaultValues: {
+      fullName: "",
       email: "",
       role: "moderator",
     },
@@ -88,9 +93,9 @@ export default function ProtocolStaffPage() {
   async function onSubmit(data: StaffFormValues) {
     setIsLoading(true);
     try {
-      // To implement staff addition logic
       const newStaffMember: StaffMember = {
         id: Date.now().toString(),
+        fullName: data.fullName,
         email: data.email,
         role: data.role,
         dateAdded: new Date().toISOString().split("T")[0],
@@ -147,7 +152,19 @@ export default function ProtocolStaffPage() {
                   onSubmit={form.handleSubmit(onSubmit)}
                   className="flex gap-4"
                 >
-                  <div className="flex-1">
+                  <div className="flex-1 space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="fullName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input placeholder="Enter full name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <FormField
                       control={form.control}
                       name="email"
@@ -223,6 +240,7 @@ export default function ProtocolStaffPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Full Name</TableHead>
                     <TableHead>Email</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Date Added</TableHead>
@@ -232,6 +250,7 @@ export default function ProtocolStaffPage() {
                 <TableBody>
                   {staff.map((member) => (
                     <TableRow key={member.id}>
+                      <TableCell>{member.fullName}</TableCell>
                       <TableCell>{member.email}</TableCell>
                       <TableCell className="capitalize">
                         {member.role}

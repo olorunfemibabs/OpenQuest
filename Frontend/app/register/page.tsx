@@ -21,10 +21,14 @@ import { registerSchema, type RegisterInput } from "@/lib/validations/auth";
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordInput } from "@/components/ui/password-input";
+import { useAuth } from "@/contexts/auth-context";
+import { useRouter } from "next/navigation";
 
 export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { register: registerUser } = useAuth();
+  const router = useRouter();
 
   const form = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
@@ -39,21 +43,23 @@ export default function RegisterPage() {
   const onSubmit = async (data: RegisterInput) => {
     try {
       setIsLoading(true);
-      // Yet to integrate with backend API
-      console.log(data);
 
-      // Simulating API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await registerUser(data.name, data.email, data.password);
 
       toast({
         title: "Success",
         description: "Your account has been created.",
       });
-    } catch (error) {
+
+      // Optionally redirect to login
+      router.push("/login");
+    } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Something went wrong. Please try again.",
+        description:
+          error.response?.data?.message ||
+          "Something went wrong. Please try again.",
       });
     } finally {
       setIsLoading(false);

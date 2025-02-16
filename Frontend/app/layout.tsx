@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+"use client";
+
 import { Inter as FontSans } from "next/font/google";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -6,24 +7,15 @@ import { ThemeProvider } from "@/components/providers/theme-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
+import { AuthProvider } from "@/contexts/auth-context";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 const fontSans = FontSans({
   subsets: ["latin"],
   variable: "--font-sans",
 });
 
-export const metadata: Metadata = {
-  title: "OpenQuest | Interactive Learning Platform",
-  description:
-    "A comprehensive platform for managing hackathons, quizzes, and technical assessments with reward distribution.",
-  keywords: [
-    "hackathon",
-    "quiz",
-    "learning platform",
-    "technical assessment",
-    "rewards",
-  ],
-};
+const queryClient = new QueryClient();
 
 export default function RootLayout({
   children,
@@ -38,19 +30,23 @@ export default function RootLayout({
           fontSans.variable
         )}
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem={false}
-          disableTransitionOnChange
-        >
-          <div className="relative flex min-h-screen flex-col bg-background text-foreground">
-            <Navbar />
-            <main className="flex-1 pt-14">{children}</main>
-            <Footer />
-          </div>
-          <Toaster />
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <QueryClientProvider client={queryClient}>
+              <div className="relative flex min-h-screen flex-col bg-background text-foreground">
+                <Navbar />
+                <main className="flex-1 pt-14">{children}</main>
+                <Footer />
+              </div>
+              <Toaster />
+            </QueryClientProvider>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -11,25 +11,32 @@ import {
 import { motion } from "framer-motion";
 import { Plus, Settings, Users, Activity, Trophy } from "lucide-react";
 import Link from "next/link";
-
-const mockProtocols = [
-  {
-    id: "1",
-    name: "DeFi Learning Protocol",
-    activeQuizzes: 2,
-    activeHackathons: 1,
-    staffCount: 5,
-  },
-  {
-    id: "2",
-    name: "Web3 Gaming Initiative",
-    activeQuizzes: 3,
-    activeHackathons: 0,
-    staffCount: 3,
-  },
-];
+import { useAdminProtocols } from "@/lib/hooks/use-admin-protocols";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminDashboard() {
+  const { data: protocols, isLoading } = useAdminProtocols();
+
+  // Add debug logs
+  console.log("Admin Dashboard - User's protocols:", protocols);
+  console.log("Admin Dashboard - Loading state:", isLoading);
+
+  if (isLoading) {
+    return (
+      <div className="container py-10">
+        <div className="mx-auto max-w-7xl space-y-8">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-96" />
+          <div className="grid gap-6 md:grid-cols-2">
+            {[1, 2].map((n) => (
+              <Skeleton key={n} className="h-[200px]" />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="container py-10">
       <div className="mx-auto max-w-7xl space-y-8">
@@ -43,14 +50,14 @@ export default function AdminDashboard() {
             </p>
           </div>
           <Button asChild>
-            <Link href="/admin/protocols/new">
+            <Link href="/protocols/new">
               <Plus className="mr-2 h-4 w-4" />
               New Protocol
             </Link>
           </Button>
         </div>
 
-        {mockProtocols.length === 0 ? (
+        {!protocols?.length ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -65,7 +72,7 @@ export default function AdminDashboard() {
                     hackathons.
                   </p>
                   <Button asChild>
-                    <Link href="/admin/protocols/new">
+                    <Link href="/protocols/new">
                       <Plus className="mr-2 h-4 w-4" />
                       Create Protocol
                     </Link>
@@ -76,14 +83,14 @@ export default function AdminDashboard() {
           </motion.div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2">
-            {mockProtocols.map((protocol, index) => (
+            {protocols.map((protocol, index) => (
               <motion.div
                 key={protocol.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <Card>
+                <Card className="transition-all duration-200 hover:shadow-lg hover:scale-[1.02] hover:border-primary/50">
                   <CardHeader>
                     <CardTitle>{protocol.name}</CardTitle>
                     <CardDescription>
@@ -97,7 +104,7 @@ export default function AdminDashboard() {
                           Active Quizzes
                         </div>
                         <div className="text-2xl font-bold">
-                          {protocol.activeQuizzes}
+                          {protocol.totalQuizzes}
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -105,7 +112,7 @@ export default function AdminDashboard() {
                           Active Hackathons
                         </div>
                         <div className="text-2xl font-bold">
-                          {protocol.activeHackathons}
+                          {protocol.totalHackathons}
                         </div>
                       </div>
                       <div className="space-y-2">
@@ -113,14 +120,16 @@ export default function AdminDashboard() {
                           Staff
                         </div>
                         <div className="text-2xl font-bold">
-                          {protocol.staffCount}
+                          {protocol.staffs.length}
                         </div>
                       </div>
                     </div>
 
                     <div className="flex flex-wrap gap-3">
                       <Button variant="outline" size="sm" asChild>
-                        <Link href={`/admin/protocols/${protocol.id}/quizzes`}>
+                        <Link
+                          href={`/admin/quizzes/new?protocolId=${protocol.id}`}
+                        >
                           <Trophy className="mr-2 h-4 w-4" />
                           Quizzes
                         </Link>

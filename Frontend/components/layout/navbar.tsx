@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
-import { Menu, X, Shield, Plus, User, LogOut, Settings } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Menu,
+  X,
+  Shield,
+  Plus,
+  User,
+  LogOut,
+  Settings,
+  Loader2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +21,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/auth-context";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ROLES } from "@/lib/auth";
+import { protocolService } from "@/services/protocol-service";
 
 const navigation = [
   { name: "Hackathons", href: "/hackathons" },
@@ -23,12 +36,36 @@ const navigation = [
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
-  const isAuthenticated = true;
-  const isAdmin = true;
-  const user = {
-    name: "John Doe",
-    email: "john@example.com",
-    image: null,
+  const [isLoading, setIsLoading] = useState(false);
+  const { user, logout } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    async function checkAdminStatus() {
+      if (user?.id) {
+        const isProtocolAdmin = await protocolService.isProtocolAdmin(user.id);
+        setIsAdmin(isProtocolAdmin);
+      }
+    }
+
+    checkAdminStatus();
+  }, [user]);
+
+  function getInitials(name: string = "") {
+    return name
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .toUpperCase();
+  }
+
+  const handleLogout = async () => {
+    setIsLoading(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -59,18 +96,18 @@ export function Navbar() {
           {/* Auth Buttons */}
           <div className="hidden md:block">
             <div className="flex items-center space-x-4">
-              {isAuthenticated ? (
+              {user ? (
                 <>
                   {isAdmin ? (
                     <Button variant="ghost" size="sm" asChild>
                       <Link href="/admin">
                         <Shield className="mr-2 h-4 w-4" />
-                        Admin
+                        Admin Dashboard
                       </Link>
                     </Button>
                   ) : (
                     <Button variant="ghost" size="sm" asChild>
-                      <Link href="admin/protocols/new">
+                      <Link href="/protocols/new">
                         <Plus className="mr-2 h-4 w-4" />
                         Create Protocol
                       </Link>
@@ -78,31 +115,19 @@ export function Navbar() {
                   )}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="relative h-8 w-8 rounded-full"
-                      >
-                        {user.image ? (
-                          <img
-                            src={user.image}
-                            alt={user.name}
-                            className="h-5 w-5 rounded-full"
-                          />
-                        ) : (
-                          <User className="h-5 w-5" />
-                        )}
+                      <Button variant="ghost" size="sm">
+                        <Avatar>
+                          <AvatarFallback>
+                            {getInitials(user.username)}
+                          </AvatarFallback>
+                        </Avatar>
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent
-                      className="w-56"
-                      align="end"
-                      forceMount
-                    >
-                      <DropdownMenuLabel className="font-normal">
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>
                         <div className="flex flex-col space-y-1">
                           <p className="text-sm font-medium leading-none">
-                            {user.name}
+                            {user.username}
                           </p>
                           <p className="text-xs leading-none text-muted-foreground">
                             {user.email}
@@ -123,9 +148,16 @@ export function Navbar() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive">
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log out
+                      <DropdownMenuItem
+                        onClick={handleLogout}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <LogOut className="mr-2 h-4 w-4" />
+                        )}
+                        {isLoading ? "Logging out..." : "Log out"}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -176,7 +208,7 @@ export function Navbar() {
               </Link>
             ))}
             <div className="mt-4 space-y-2 px-3">
-              {isAuthenticated ? (
+              {user ? (
                 <>
                   {isAdmin ? (
                     <Button
@@ -186,7 +218,7 @@ export function Navbar() {
                     >
                       <Link href="/admin">
                         <Shield className="mr-2 h-4 w-4" />
-                        Admin
+                        Admin Dashboard
                       </Link>
                     </Button>
                   ) : (
@@ -203,9 +235,9 @@ export function Navbar() {
                   )}
                   <div className="space-y-1 pt-2">
                     <div className="px-3">
-                      <p className="text-sm font-medium">{user.name}</p>
+                      <p className="text-sm font-medium">{user?.username}</p>
                       <p className="text-xs text-muted-foreground">
-                        {user.email}
+                        {user?.email}
                       </p>
                     </div>
                     <Button

@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState, useMemo } from "react";
+import { ReminderButton } from "@/components/quiz/reminder-button";
 
 // Types for our quiz data
 interface Quiz {
@@ -43,6 +44,7 @@ interface Quiz {
   reward: string;
   status: "upcoming" | "active" | "completed";
   tags: string[];
+  hasReminder?: boolean;
 }
 
 const quizzes: Quiz[] = [
@@ -180,73 +182,80 @@ export default function QuizzesPage() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
     >
-      <Link href={`/quizzes/${quiz.id}`}>
-        <Card className="group hover-card-animation">
-          <CardContent className="p-6">
-            <div className="flex items-start justify-between">
-              <div className="space-y-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-medium hover-card-title">
-                      {quiz.title}
-                    </h3>
-                    <Badge
-                      variant="secondary"
-                      className={difficultyColors[quiz.difficulty]}
-                    >
-                      {quiz.difficulty}
-                    </Badge>
-                    <Badge
-                      variant="secondary"
-                      className={statusColors[quiz.status]}
-                    >
-                      {quiz.status.charAt(0).toUpperCase() +
-                        quiz.status.slice(1)}
-                    </Badge>
-                  </div>
-                  <p className="mt-1 text-sm text-muted-foreground">
-                    {quiz.description}
-                  </p>
+      <Card className="group hover-card-animation">
+        <CardContent className="p-6">
+          <div className="flex items-start justify-between">
+            <div className="space-y-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-medium hover-card-title">
+                    {quiz.title}
+                  </h3>
+                  <Badge
+                    variant="secondary"
+                    className={difficultyColors[quiz.difficulty]}
+                  >
+                    {quiz.difficulty}
+                  </Badge>
+                  <Badge
+                    variant="secondary"
+                    className={statusColors[quiz.status]}
+                  >
+                    {quiz.status.charAt(0).toUpperCase() + quiz.status.slice(1)}
+                  </Badge>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {quiz.tags.map((tag) => (
-                    <Badge key={tag} variant="outline">
-                      {tag}
-                    </Badge>
-                  ))}
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {quiz.description}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {quiz.tags.map((tag) => (
+                  <Badge key={tag} variant="outline">
+                    {tag}
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  <span>
+                    Starts {new Date(quiz.startDate).toLocaleDateString()}
+                  </span>
                 </div>
-                <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4" />
-                    <span>
-                      Starts {new Date(quiz.startDate).toLocaleDateString()}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    <span>{quiz.duration}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4" />
-                    <span>{quiz.participants} participants</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Trophy className="h-4 w-4" />
-                    <span>{quiz.reward}</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  <span>{quiz.duration}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  <span>{quiz.participants} participants</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4" />
+                  <span>{quiz.reward}</span>
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                View Details
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </Button>
             </div>
-          </CardContent>
-        </Card>
-      </Link>
+            <div className="flex flex-col gap-2">
+              {quiz.status === "upcoming" && (
+                <ReminderButton
+                  quizId={quiz.id}
+                  isReminded={quiz.hasReminder}
+                />
+              )}
+              <Link href={`/quizzes/${quiz.id}`}>
+                <Button
+                  variant="ghost"
+                  className="opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  View Details
+                  <ExternalLink className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </motion.div>
   );
 
