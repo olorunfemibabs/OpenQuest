@@ -45,6 +45,7 @@ export default function QuizPage() {
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
   const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
     console.log("Quiz page params:", params);
@@ -69,8 +70,9 @@ export default function QuizPage() {
           difficulty: response.difficulty,
           total_reward: response.total_reward,
           questions:
-            response.questions?.map((q: any) => ({
-              id: q.id.toString(),
+            response.questions?.map((q: any, index: number) => ({
+              id: String(index + 1),
+              originalId: q.id,
               text: q.question_text,
               type: QuestionType.SINGLE_CHOICE,
               options: q.options.map((opt: any) => ({
@@ -107,37 +109,87 @@ export default function QuizPage() {
 
   const handleAnswer = (answer: string | string[]) => {
     const currentQuestion = quiz.questions[currentQuestionIndex as number];
+    console.log("Current question:", currentQuestion);
+    console.log("New answer:", answer);
+
     setAnswers((prev) => {
-      const existing = prev.findIndex(
+      // Create new answer object
+      const newAnswer = {
+        questionId: currentQuestion.id,
+        answer: Array.isArray(answer) ? answer[0] : answer,
+      };
+
+      // Find if this question was already answered
+      const existingIndex = prev.findIndex(
         (a) => a.questionId === currentQuestion.id
       );
-      if (existing !== -1) {
-        const updated = [...prev];
-        updated[existing] = { questionId: currentQuestion.id, answer };
-        return updated;
+
+      let updated;
+      if (existingIndex !== -1) {
+        // Replace existing answer
+        updated = [...prev];
+        updated[existingIndex] = newAnswer;
+      } else {
+        // Add new answer
+        updated = [...prev, newAnswer];
       }
-      return [...prev, { questionId: currentQuestion.id, answer }];
+
+      // Update progress
+      const uniqueAnswered = new Set(updated.map((a) => a.questionId)).size;
+      setProgress(uniqueAnswered);
+
+      console.log("Updated answers:", updated);
+      console.log("Progress:", uniqueAnswered, "out of", quiz.questions.length);
+
+      return updated;
     });
   };
 
   const handleSubmit = async () => {
-    setIsSubmitting(true);
     try {
-      const submission = {
-        quiz_id: quizId,
-        answers: answers.map((answer) => ({
-          question_id: answer.questionId,
-          selected_option: Array.isArray(answer.answer)
-            ? answer.answer[0]
-            : answer.answer,
-        })),
-      };
+      setIsSubmitting(true);
 
-      await quizService.submitQuiz(submission);
+      // Log current state for debugging
+      console.log("Current answers:", answers);
+      console.log("Total questions:", quiz.questions.length);
+
+      // Check if all questions are answered
+      const answeredQuestionIds = new Set(answers.map((a) => a.questionId));
+      const allQuestionIds = new Set(quiz.questions.map((q: any) => q.id));
+
+      console.log("Answered questions:", answeredQuestionIds);
+      console.log("All questions:", allQuestionIds);
+
+      const allQuestionsAnswered = quiz.questions.every((q: any) =>
+        answers.some((a) => a.questionId === q.id)
+      );
+
+      if (!allQuestionsAnswered) {
+        toast({
+          title: "Incomplete Quiz",
+          description: `Please answer all questions before submitting. You have answered ${answers.length} out of ${quiz.questions.length} questions.`,
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Format answers for submission
+      const formattedAnswers = answers.map((answer) => {
+        // Find the original question to get its original ID
+        const question = quiz.questions.find(
+          (q: any) => q.id === answer.questionId
+        );
+        return {
+          question_id: Number(question?.originalId),
+          answer: String(answer.answer).toUpperCase(),
+        };
+      });
+
+      await quizService.submitQuiz(quizId, formattedAnswers);
 
       toast({
         title: "Quiz Submitted",
-        description: "Your answers have been recorded.",
+        description: "Your answers have been submitted successfully",
       });
 
       router.push(`/quizzes/${quizId}/results`);
@@ -148,8 +200,9 @@ export default function QuizPage() {
         description: "Failed to submit quiz. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsSubmitting(false);
   };
 
   const handleTimeUp = () => {
@@ -218,7 +271,7 @@ export default function QuizPage() {
 
         {currentQuestionIndex !== null && (
           <QuizProgress
-            currentQuestion={answers.length}
+            currentQuestion={progress}
             totalQuestions={quiz.questions.length}
           />
         )}

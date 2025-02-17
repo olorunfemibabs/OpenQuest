@@ -383,11 +383,31 @@ export const quizService = {
   },
 
   // Submit quiz answers
-  async submitQuizAnswers(quizId: string, answers: any) {
-    const response = await apiClient.post(`/quizzes/${quizId}/submit`, {
-      answers,
-    });
-    return response.data;
+  async submitQuiz(
+    quiz_uuid: string,
+    answers: { question_id: number; answer: string }[]
+  ) {
+    try {
+      console.log("Submitting quiz answers:", { quiz_uuid, answers });
+
+      // Ensure the data matches exactly what the API expects
+      const payload = {
+        quiz_uuid: quiz_uuid.toString(),
+        answers: answers.map((a) => ({
+          question_id: Number(a.question_id),
+          answer: a.answer.toUpperCase(),
+        })),
+      };
+
+      console.log("Submission payload:", payload);
+
+      const response = await apiClient.post("/quiz/submit", payload);
+      console.log("Submit quiz response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Failed to submit quiz:", error);
+      throw error;
+    }
   },
 
   async startQuiz(quiz_uuid: string) {
@@ -401,11 +421,14 @@ export const quizService = {
       console.log("Start quiz response:", response.data);
       return response.data;
     } catch (error: any) {
+      // If it's a 401 error, make it more user-friendly
+      if (error.response?.status === 401) {
+        throw new Error("Please sign in to start the quiz");
+      }
       console.error("Failed to start quiz:", {
         error,
         uuid: quiz_uuid,
-        request: error.request,
-        response: error.response,
+        response: error.response?.data,
       });
       throw error;
     }
@@ -528,22 +551,6 @@ export const quizService = {
       return MOCK_QUIZZES;
     } catch (error) {
       console.error("Failed to fetch quizzes:", error);
-      throw error;
-    }
-  },
-
-  async submitQuiz(submission: {
-    quiz_id: string;
-    answers: { question_id: string; selected_option: string }[];
-  }) {
-    try {
-      const response = await apiClient.post(
-        `/quizes/${submission.quiz_id}/submit`,
-        submission
-      );
-      return response.data;
-    } catch (error) {
-      console.error("Failed to submit quiz:", error);
       throw error;
     }
   },
