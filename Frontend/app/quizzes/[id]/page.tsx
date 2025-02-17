@@ -43,25 +43,62 @@ export default function QuizPage() {
     number | null
   >(null);
   const [answers, setAnswers] = useState<QuizAnswer[]>([]);
-  const [timeRemaining, setTimeRemaining] = useState<number>(30 * 60); // 30 minutes in seconds
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    console.log("Quiz page params:", params);
+    console.log("Quiz ID from params:", quizId);
+  }, [params, quizId]);
 
   useEffect(() => {
     if (!quizId) return;
 
     async function fetchQuiz() {
       try {
-        const data = await quizService.getQuizById(quizId);
-        setQuiz(data);
+        setIsLoading(true);
+        const response = await quizService.getQuizById(quizId);
+        console.log("Fetched quiz:", response);
+
+        // Transform quiz data to match our UI needs
+        const transformedQuiz = {
+          id: response.uuid,
+          name: response.name,
+          description: response.description,
+          duration_in_sec_timestamp: response.duration_in_sec_timestamp,
+          difficulty: response.difficulty,
+          total_reward: response.total_reward,
+          questions:
+            response.questions?.map((q: any) => ({
+              id: q.id.toString(),
+              text: q.question_text,
+              type: QuestionType.SINGLE_CHOICE,
+              options: q.options.map((opt: any) => ({
+                id: opt.option_index,
+                text: opt.text,
+                isCorrect: opt.option_index === q.correct_answer,
+              })),
+              points: 10,
+            })) || [],
+        };
+
+        console.log("Transformed quiz:", transformedQuiz);
+        setQuiz(transformedQuiz);
+        setTimeRemaining(transformedQuiz.duration_in_sec_timestamp);
       } catch (error) {
         console.error("Error fetching quiz:", error);
+        toast({
+          title: "Error",
+          description: "Failed to load quiz. Please try again.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoading(false);
       }
     }
 
     fetchQuiz();
-  }, [quizId]);
+  }, [quizId, toast]);
 
   const handleStart = () => {
     setHasStarted(true);
@@ -86,13 +123,26 @@ export default function QuizPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // TODO: Implement submission logic
+      const submission = {
+        quiz_id: quizId,
+        answers: answers.map((answer) => ({
+          question_id: answer.questionId,
+          selected_option: Array.isArray(answer.answer)
+            ? answer.answer[0]
+            : answer.answer,
+        })),
+      };
+
+      await quizService.submitQuiz(submission);
+
       toast({
         title: "Quiz Submitted",
         description: "Your answers have been recorded.",
       });
-      router.push(`/quizzes/${params.id}/results`);
+
+      router.push(`/quizzes/${quizId}/results`);
     } catch (error) {
+      console.error("Error submitting quiz:", error);
       toast({
         title: "Error",
         description: "Failed to submit quiz. Please try again.",
@@ -142,11 +192,12 @@ export default function QuizPage() {
         <QuizIntro
           title={quiz.name}
           description={quiz.description}
-          duration={quiz.duration_in_sec_timestamp}
+          duration={Math.ceil(quiz.duration_in_sec_timestamp / 60)}
           totalQuestions={quiz.questions?.length || 0}
           difficulty={quiz.difficulty}
           reward={quiz.total_reward}
           onStart={handleStart}
+          quizId={quiz.id}
         />
       </div>
     );

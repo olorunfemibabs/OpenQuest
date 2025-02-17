@@ -78,10 +78,10 @@ const formSchema = z.object({
   difficulty: z.enum(["Easy", "Medium", "Hard"]),
   description: z.string().min(1, "Description is required"),
   access: z.enum(["Public", "Private"]),
-  total_reward: z.number().min(0),
-  max_reward_per_user: z.number().min(0),
-  duration_in_sec_timestamp: z.number().min(1),
-  start_time: z.number(),
+  total_reward: z.coerce.number().min(0),
+  max_reward_per_user: z.coerce.number().min(0),
+  duration_in_sec_timestamp: z.coerce.number().min(1),
+  start_time: z.coerce.number(),
   reward_type: z.enum(["distributed_by_rank", "fixed"]),
   questions: z
     .array(questionSchema)
@@ -126,6 +126,7 @@ function NewQuizForm() {
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    mode: "onChange",
     defaultValues: {
       name: "",
       difficulty: "Easy",
@@ -182,14 +183,24 @@ function NewQuizForm() {
     setIsSaving(true);
     try {
       form.setValue(field as keyof z.infer<typeof formSchema>, value);
-      // Could add auto-save functionality here
     } finally {
       setIsSaving(false);
     }
   };
 
+  const formState = form.formState;
+  console.log("Form state:", {
+    isDirty: formState.isDirty,
+    isValid: formState.isValid,
+    errors: formState.errors,
+  });
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
+    console.log("1. Form submission started");
+    console.log("Form values:", values);
+
     if (!protocolId) {
+      console.log("2. Error: No protocol ID found");
       toast({
         title: "Error",
         description: "Protocol ID is required",
@@ -200,33 +211,57 @@ function NewQuizForm() {
 
     setIsSubmitting(true);
     try {
-      const formattedData = {
-        ...values,
+      console.log("3. Formatting data for API");
+      const formattedData: CreateQuizDto = {
+        name: values.name,
+        difficulty: values.difficulty,
+        description: values.description,
         protocol: protocolId,
-        questions: values.questions.map((q) => ({
-          ...q,
-          id: Number(q.id),
+        access: values.access,
+        total_reward: Number(values.total_reward),
+        max_reward_per_user: Number(values.max_reward_per_user),
+        duration_in_sec_timestamp:
+          Number(values.duration_in_sec_timestamp) * 60,
+        start_time: Math.floor(Date.now() / 1000),
+        reward_type: values.reward_type,
+        questions: values.questions.map((q, index) => ({
+          id: index + 1,
           question_text: q.question_text,
-          options: q.options.map((opt, idx) => ({
-            text: opt.text,
-            option_index: ["A", "B", "C", "D"][idx],
-          })),
+          options: [
+            { text: q.options[0].text, option_index: "A" },
+            { text: q.options[1].text, option_index: "B" },
+            { text: q.options[2].text, option_index: "C" },
+            { text: q.options[3].text, option_index: "D" },
+          ],
           correct_answer: q.correct_answer,
         })),
       };
 
-      console.log("Submitting quiz:", formattedData);
-      await quizService.createQuiz(formattedData as CreateQuizDto);
+      console.log("4. Formatted data:", formattedData);
+      console.log("5. Making API call");
+      const response = await quizService.createQuiz(formattedData);
+      console.log("6. API response:", response);
 
       toast({
         title: "Success",
         description: "Quiz created successfully",
       });
-    } catch (error) {
-      console.error("Failed to create quiz:", error);
+
+      setCreatedQuizId(response.quiz_uuid);
+      setQuizCreated(true);
+
+      console.log("7. Redirecting to quiz list");
+      router.push(`/admin/protocols/${protocolId}/quizzes`);
+    } catch (error: any) {
+      console.error("8. Error creating quiz:", error);
+      console.error("Error details:", {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+      });
       toast({
         title: "Error",
-        description: "Failed to create quiz",
+        description: error.response?.data?.message || "Failed to create quiz",
         variant: "destructive",
       });
     } finally {
@@ -291,7 +326,10 @@ function NewQuizForm() {
 
             <Form {...form}>
               <form
-                onSubmit={form.handleSubmit(onSubmit)}
+                onSubmit={(e) => {
+                  console.log("Form submit event triggered");
+                  form.handleSubmit(onSubmit)(e);
+                }}
                 className="space-y-6"
               >
                 <TabsContent value="basic">
@@ -580,6 +618,7 @@ function NewQuizForm() {
                   type="submit"
                   className="w-full mt-6"
                   disabled={isSubmitting || isSaving}
+                  onClick={() => console.log("Submit button clicked")}
                 >
                   {isSubmitting ? (
                     <>

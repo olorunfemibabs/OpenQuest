@@ -11,6 +11,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Timer, AlertCircle } from "lucide-react";
+import { useAccount } from "wagmi";
+import { WalletConnect } from "@/components/wallet/wallet-connect";
+import { useToast } from "@/components/ui/use-toast";
+import { quizService } from "@/services/quiz-service";
+import { useState, useEffect } from "react";
 
 interface QuizIntroProps {
   title: string;
@@ -20,6 +25,7 @@ interface QuizIntroProps {
   difficulty: string;
   reward: number;
   onStart: () => void;
+  quizId: string;
 }
 
 export function QuizIntro({
@@ -30,9 +36,72 @@ export function QuizIntro({
   difficulty,
   reward,
   onStart,
+  quizId,
 }: QuizIntroProps) {
+  const { isConnected } = useAccount();
+  const { toast } = useToast();
+  const [isStarting, setIsStarting] = useState(false);
+
+  useEffect(() => {
+    console.log("QuizIntro props:", {
+      title,
+      description,
+      duration,
+      totalQuestions,
+      difficulty,
+      reward,
+      quizId,
+    });
+  }, [
+    title,
+    description,
+    duration,
+    totalQuestions,
+    difficulty,
+    reward,
+    quizId,
+  ]);
+
+  const handleStartQuiz = async () => {
+    try {
+      setIsStarting(true);
+
+      if (!quizId) {
+        throw new Error("Quiz ID is required");
+      }
+
+      await quizService.startQuiz(quizId);
+      onStart();
+    } catch (error: any) {
+      console.error("Failed to start quiz:", error);
+
+      // Check if unauthorized
+      if (error.response?.status === 401) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in before starting the quiz",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      toast({
+        title: "Error",
+        description:
+          error.response?.data || "Failed to start quiz. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
   return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -20 }}
+    >
       <Card className="mx-auto max-w-2xl">
         <CardHeader>
           <CardTitle className="text-2xl">{title}</CardTitle>
@@ -81,9 +150,22 @@ export function QuizIntro({
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={onStart} className="w-full">
-            Start Quiz
-          </Button>
+          {!isConnected ? (
+            <div className="w-full space-y-4">
+              <p className="text-center text-muted-foreground">
+                Please connect your wallet to start the quiz
+              </p>
+              <WalletConnect />
+            </div>
+          ) : (
+            <Button
+              onClick={handleStartQuiz}
+              className="w-full"
+              disabled={isStarting}
+            >
+              {isStarting ? "Starting..." : "Start Quiz"}
+            </Button>
+          )}
         </CardFooter>
       </Card>
     </motion.div>

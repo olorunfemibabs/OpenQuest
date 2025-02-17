@@ -9,7 +9,6 @@ import { useDebounce } from "@/lib/hooks/use-debounce";
 import { ROLES } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import { User } from "@/types/user";
-
 export default function AdminUsersPage() {
   const { user } = useAuth();
   const [searchEmail, setSearchEmail] = useState("");

@@ -48,7 +48,11 @@ export default function CreateProtocolPage() {
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    console.log("Protocols/new - Current user:", user);
+    if (typeof document !== "undefined") {
+      console.log("Protocols/new - Cookies:", document.cookie);
+    }
+  }, [user]);
 
   // Don't render anything until we're on the client
   if (!isClient) {
