@@ -29,6 +29,7 @@ import { EditProfileDialog } from "@/components/profile/edit-profile-dialog";
 import { WalletConnect } from "@/components/profile/wallet-connect";
 import { useAuth } from "@/contexts/auth-context";
 import { authService } from "@/services/auth-service";
+import { LinkWallet } from "@/components/user/link-wallet";
 
 // Add these interfaces at the top of the file
 interface ProfileData {
@@ -295,6 +296,8 @@ export default function ProfilePage() {
             </div>
           </TabsContent>
         </Tabs>
+
+        <LinkWallet />
       </div>
     </div>
   );
