@@ -1,24 +1,17 @@
-import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from "axios";
+import axios from "axios";
 
 const apiClient = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   withCredentials: true,
 });
 
-// Add request interceptor
-apiClient.interceptors.request.use((config: InternalAxiosRequestConfig) => {
-  // Update headers to work with credentials
-  if (config.headers) {
-    config.headers["Content-Type"] = "application/json";
-    config.headers.Accept = "application/json";
-  }
-
+// Update the interceptor to not look for token in localStorage
+apiClient.interceptors.request.use((config) => {
   console.log("API Request Debug:", {
     url: config.url,
     method: config.method,
     withCredentials: config.withCredentials,
   });
-
   return config;
 });
 

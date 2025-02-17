@@ -16,6 +16,7 @@ import { WalletConnect } from "@/components/wallet/wallet-connect";
 import { useToast } from "@/components/ui/use-toast";
 import { quizService } from "@/services/quiz-service";
 import { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/auth-context";
 
 interface QuizIntroProps {
   title: string;
@@ -39,6 +40,7 @@ export function QuizIntro({
   quizId,
 }: QuizIntroProps) {
   const { isConnected } = useAccount();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isStarting, setIsStarting] = useState(false);
 
@@ -70,13 +72,7 @@ export function QuizIntro({
         throw new Error("Quiz ID is required");
       }
 
-      await quizService.startQuiz(quizId);
-      onStart();
-    } catch (error: any) {
-      console.error("Failed to start quiz:", error);
-
-      // Check if unauthorized
-      if (error.response?.status === 401) {
+      if (!user) {
         toast({
           title: "Authentication Required",
           description: "Please sign in before starting the quiz",
@@ -85,10 +81,15 @@ export function QuizIntro({
         return;
       }
 
+      await quizService.startQuiz(quizId);
+      onStart();
+    } catch (error) {
+      console.error("Failed to start quiz:", error);
       toast({
         title: "Error",
         description:
-          error.response?.data || "Failed to start quiz. Please try again.",
+          (error as any).response?.data ||
+          "Failed to start quiz. Please try again.",
         variant: "destructive",
       });
     } finally {

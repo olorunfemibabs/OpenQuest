@@ -15,9 +15,8 @@ import { Input } from "@/components/ui/input";
 import { protocolService } from "@/services/protocol-service";
 import { Skeleton } from "@/components/ui/skeleton";
 import { UIProtocol } from "@/types/protocol";
-import { quizService } from "@/services/quiz-service";
+import { quizService, Quiz as APIQuiz } from "@/services/quiz-service";
 import { QuizList } from "@/components/quiz/quiz-list";
-// import { Quiz } from "@/services/quiz-service";
 
 // Define the UI Quiz type that our components expect
 interface UIQuiz {
@@ -43,51 +42,51 @@ export default function ProtocolQuizzesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // useEffect(() => {
-  //   async function fetchData() {
-  //     try {
-  //       setIsLoading(true);
-  //       const [protocolData, quizzesData] = await Promise.all([
-  //         protocolService.getProtocolById(params.id as string),
-  //         quizService.getAllQuizzes(),
-  //       ]);
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        setIsLoading(true);
+        const [protocolData, quizzesData] = await Promise.all([
+          protocolService.getProtocolById(params.id as string),
+          quizService.getAllQuizzes(),
+        ]);
 
-  //       console.log("Protocol data:", protocolData);
-  //       console.log("Raw quizzes data:", quizzesData);
+        console.log("Protocol data:", protocolData);
+        console.log("Raw quizzes data:", quizzesData);
 
-  //       setProtocol(protocolData);
+        setProtocol(protocolData);
 
-  //       const transformedQuizzes = quizzesData
-  //         .filter((quiz: Quiz) => quiz.protocol === params.id)
-  //         .map((quiz: Quiz) => ({
-  //           id: quiz.uuid,
-  //           title: quiz.name,
-  //           description: quiz.description,
-  //           startDate: new Date(quiz.start_time * 1000).toISOString(),
-  //           duration: `${quiz.duration_in_sec_timestamp / 60} minutes`,
-  //           difficulty: quiz.difficulty,
-  //           participants: quiz.participants.length,
-  //           totalParticipants: quiz.participants.length,
-  //           reward: `${quiz.total_reward} USDC`,
-  //           status: quiz.status.toLowerCase() as
-  //             | "upcoming"
-  //             | "active"
-  //             | "completed",
-  //           tags: [],
-  //           protocol: quiz.protocol,
-  //         }));
+        const transformedQuizzes = quizzesData
+          .filter((quiz: APIQuiz) => quiz.protocol === params.id)
+          .map((quiz: APIQuiz) => ({
+            id: quiz.uuid,
+            title: quiz.name,
+            description: quiz.description,
+            startDate: new Date(quiz.start_time * 1000).toISOString(),
+            duration: `${quiz.duration_in_sec_timestamp / 60} minutes`,
+            difficulty: quiz.difficulty,
+            participants: quiz.participants.length,
+            totalParticipants: quiz.participants.length,
+            reward: `${quiz.total_reward} USDC`,
+            status: quiz.status.toLowerCase() as
+              | "upcoming"
+              | "active"
+              | "completed",
+            tags: [],
+            protocol: quiz.protocol,
+          }));
 
-  //       console.log("Transformed quizzes:", transformedQuizzes);
-  //       setQuizzes(transformedQuizzes);
-  //     } catch (error) {
-  //       console.error("Error fetching data:", error);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   }
+        console.log("Transformed quizzes:", transformedQuizzes);
+        setQuizzes(transformedQuizzes);
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
 
-  //   fetchData();
-  // }, [params.id]);
+    fetchData();
+  }, [params.id]);
 
   const filteredQuizzes = quizzes.filter((quiz) =>
     quiz.title.toLowerCase().includes(searchQuery.toLowerCase())
@@ -130,11 +129,11 @@ export default function ProtocolQuizzesPage() {
               />
             </div>
           </div>
-          {/* <QuizList
-            quizzes={filteredQuizzes}
+          <QuizList
+            quizzes={filteredQuizzes as any}
             isLoading={isLoading}
             searchQuery={searchQuery}
-          /> */}
+          />
         </CardContent>
       </Card>
     </div>

@@ -26,15 +26,15 @@ interface QuizParticipant {
   reward: number;
 }
 
-interface Quiz {
+export interface Quiz {
   uuid: string;
   name: string;
-  difficulty: "Easy" | "Medium" | "Hard";
-  protocol: string;
   description: string;
+  difficulty: string;
+  protocol: string;
   num_questions: number;
-  questions: QuizQuestion[];
-  access: "Public" | "Private";
+  questions: any[];
+  access: string;
   total_reward: number;
   max_reward_per_user: number;
   duration_in_sec_timestamp: number;
@@ -42,10 +42,10 @@ interface Quiz {
   end_time: number;
   created_at: number;
   created_by: string;
-  participants: QuizParticipant[];
-  status: "Pending" | "Active" | "Completed";
+  participants: any[];
+  status: string;
   submited: boolean;
-  reward_type: "DistributedByRankToTopFive" | "Fixed";
+  reward_type: string;
 }
 
 export interface CreateQuizDto {
@@ -244,7 +244,7 @@ function cleanRawQuizData(rawData: string): Quiz[] {
             start_time: Number(participant.start_time),
             reward: Number(participant.reward),
             answered_questions: participant.answered_questions
-              ? participant.answered_questions.map((answer) => ({
+              ? participant.answered_questions.map((answer: any) => ({
                   ...answer,
                   question_id: Number(answer.question_id),
                 }))
@@ -275,24 +275,36 @@ function transformSingleQuizResponse(rawData: any) {
 
     // Clean up Rust-style formatting
     const cleanedString = dataString
-      .replace(/Quiz \{/g, "{")
-      .replace(/Question \{/g, "{")
-      .replace(/QuizOption \{/g, "{")
+      // Clean up Participant objects
+      .replace(/\[Participant {/g, "[{")
+      .replace(/}, Participant {/g, "}, {")
+      // Clean up Answer objects
+      .replace(/\[QuizAnswer {/g, "[{")
+      .replace(/}, QuizAnswer {/g, "}, {")
+      .replace(/answer: ([A-D])/g, 'answer: "$1"')
+      // Clean up Quiz objects
+      .replace(/Quiz {/g, "{")
+      .replace(/Question {/g, "{")
+      .replace(/QuizOption {/g, "{")
+      // Clean up enums
       .replace(/: Easy/g, ': "Easy"')
       .replace(/: Medium/g, ': "Medium"')
       .replace(/: Hard/g, ': "Hard"')
       .replace(/: Public/g, ': "Public"')
       .replace(/: Private/g, ': "Private"')
-      .replace(/: Pending/g, ': "Pending"')
+      .replace(/: Ongoing/g, ': "Ongoing"')
       .replace(/: Active/g, ': "Active"')
       .replace(/: Completed/g, ': "Completed"')
+      .replace(/: Pending/g, ': "Pending"')
       .replace(
         /: DistributedByRankToTopFive/g,
         ': "DistributedByRankToTopFive"'
       )
       .replace(/: Fixed/g, ': "Fixed"')
+      // Clean up option indices and answers
       .replace(/option_index: ([A-D])/g, 'option_index: "$1"')
       .replace(/correct_answer: ([A-D])/g, 'correct_answer: "$1"')
+      // General JSON formatting
       .replace(/(\w+):/g, '"$1":')
       .replace(/,\s*}/g, "}")
       .replace(/,\s*]/g, "]")
@@ -300,7 +312,7 @@ function transformSingleQuizResponse(rawData: any) {
       .replace(/"\s+/g, '"')
       .replace(/\s+"/g, '"');
 
-    console.log("Cleaned string:", cleanedString);
+    console.log("Cleaned string before parsing:", cleanedString);
 
     // Parse the cleaned string into a JavaScript object
     const quiz = JSON.parse(cleanedString);
@@ -330,7 +342,10 @@ function transformSingleQuizResponse(rawData: any) {
         })) || [],
     };
   } catch (error) {
-    console.error("Error transforming quiz data:", error);
+    console.error("Error transforming quiz data:", {
+      error,
+      rawData,
+    });
     throw error;
   }
 }
@@ -379,15 +394,9 @@ export const quizService = {
     try {
       console.log("Starting quiz with UUID:", quiz_uuid);
 
-      const response = await apiClient.post(
-        "/quiz/join",
-        {
-          quiz_uuid: quiz_uuid,
-        },
-        {
-          withCredentials: true, // Ensure cookies are sent
-        }
-      );
+      const response = await apiClient.post("/quiz/join", {
+        quiz_uuid: quiz_uuid,
+      });
 
       console.log("Start quiz response:", response.data);
       return response.data;
@@ -412,17 +421,90 @@ export const quizService = {
       console.log("Fetching all quizzes...");
       const response = await apiClient.get("/quizes");
 
-      // Clean and parse the raw data
-      const cleanedQuizzes = cleanRawQuizData(response.data);
-      console.log("Cleaned quizzes:", cleanedQuizzes);
+      // Debug the raw response
+      console.log("Raw response:", response.data);
 
-      return cleanedQuizzes;
-    } catch (error: any) {
-      console.error("Failed to fetch quizzes:", {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status,
-      });
+      // If response is empty array, return it
+      if (Array.isArray(response.data) && response.data.length === 0) {
+        return [];
+      }
+
+      // If it's a string, clean and parse it
+      const cleanedString = response.data
+        .toString()
+        // Clean up Participant objects
+        .replace(/\[Participant {/g, "[{")
+        .replace(/}, Participant {/g, "}, {")
+        // Clean up Answer objects
+        .replace(/\[Answer {/g, "[{")
+        .replace(/}, Answer {/g, "}, {")
+        .replace(/\[QuizAnswer {/g, "[{")
+        .replace(/}, QuizAnswer {/g, "}, {")
+        .replace(/answer: ([A-D])/g, 'answer: "$1"')
+        // Clean up Quiz objects
+        .replace(/Quiz {/g, "{")
+        .replace(/Question {/g, "{")
+        .replace(/QuizOption {/g, "{")
+        // Clean up enums
+        .replace(/: Easy/g, ': "Easy"')
+        .replace(/: Medium/g, ': "Medium"')
+        .replace(/: Hard/g, ': "Hard"')
+        .replace(/: Public/g, ': "Public"')
+        .replace(/: Private/g, ': "Private"')
+        .replace(/: Ongoing/g, ': "Ongoing"')
+        .replace(/: Active/g, ': "Active"')
+        .replace(/: Completed/g, ': "Completed"')
+        .replace(/: Pending/g, ': "Pending"')
+        .replace(
+          /: DistributedByRankToTopFive/g,
+          ': "DistributedByRankToTopFive"'
+        )
+        .replace(/: Fixed/g, ': "Fixed"')
+        // Clean up option indices and answers
+        .replace(/option_index: ([A-D])/g, 'option_index: "$1"')
+        .replace(/correct_answer: ([A-D])/g, 'correct_answer: "$1"')
+        // General JSON formatting
+        .replace(/(\w+):/g, '"$1":')
+        .replace(/,\s*}/g, "}")
+        .replace(/,\s*]/g, "]")
+        .replace(/\\/g, "")
+        .replace(/"\s+/g, '"')
+        .replace(/\s+"/g, '"');
+
+      console.log("Cleaned string before parsing:", cleanedString);
+
+      try {
+        const quizzes = JSON.parse(cleanedString);
+        console.log("Parsed quizzes:", quizzes);
+
+        // Transform the data
+        const transformedQuizzes = quizzes.map((quiz: Quiz) => ({
+          ...quiz,
+          num_questions: Number(quiz.num_questions),
+          total_reward: Number(quiz.total_reward),
+          max_reward_per_user: Number(quiz.max_reward_per_user),
+          duration_in_sec_timestamp: Number(quiz.duration_in_sec_timestamp),
+          start_time: Number(quiz.start_time),
+          end_time: Number(quiz.end_time),
+          created_at: Number(quiz.created_at),
+          participants:
+            quiz.participants?.map((p: any) => ({
+              ...p,
+              score: Number(p.score),
+              submission_time: Number(p.submission_time),
+              start_time: Number(p.start_time),
+              reward: Number(p.reward),
+            })) || [],
+        }));
+
+        return transformedQuizzes;
+      } catch (parseError) {
+        console.error("JSON Parse Error:", parseError);
+        console.log("Failed to parse string:", cleanedString);
+        return [];
+      }
+    } catch (error) {
+      console.error("Failed to fetch quizzes:", error);
       throw error;
     }
   },

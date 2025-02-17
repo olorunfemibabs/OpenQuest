@@ -297,7 +297,10 @@ export default function ProfilePage() {
           </TabsContent>
         </Tabs>
 
-        <LinkWallet />
+        <div className="space-y-4">
+          <h2 className="text-2xl font-bold tracking-tight">Wallet</h2>
+          <LinkWallet />
+        </div>
       </div>
     </div>
   );
